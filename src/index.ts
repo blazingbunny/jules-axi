@@ -29,7 +29,7 @@ help: Run \`jules-axi sessions\` for the currently available commands.`;
 	};
 }
 
-async function homeView(): Promise<string> {
+async function homeView(): Promise<string | Record<string, unknown>> {
 	// Try to show live data per principle 8
 	try {
 		resolveApiKey();

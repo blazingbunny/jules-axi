@@ -1,12 +1,5 @@
 import { execSync } from "node:child_process";
 import { JulesApiClient, type JulesSession } from "../api.js";
-import {
-	toonHeader,
-	toonRows,
-	toonKv,
-	toonHelp,
-	type ToonRow,
-} from "../toon.js";
 
 interface SessionsFlags {
 	repo?: string;
@@ -123,11 +116,23 @@ export function deriveDisplayTitle(raw: string | undefined): string {
 	return cleaned.slice(0, 80) || "untitled";
 }
 
+/**
+ * Extract the repo slug from a session's sourceContext, matching exactly
+ * against the `sources/github/<owner>/<repo>` convention.
+ */
 function extractRepo(session: JulesSession): string {
 	const source = session.sourceContext?.source ?? "";
 	const prefix = "sources/github/";
 	if (source.startsWith(prefix)) return source.slice(prefix.length);
 	return source;
+}
+
+/** Match a session against a repo filter by comparing the extracted repo slug exactly. */
+function sessionMatchesRepo(
+	session: JulesSession,
+	repoFilter: string,
+): boolean {
+	return extractRepo(session).toLowerCase() === repoFilter.toLowerCase();
 }
 
 function helpText(): string {
@@ -142,7 +147,17 @@ Filter examples:
   jules-axi sessions --all --state COMPLETED`;
 }
 
-export async function sessionsCommand(args: string[]): Promise<string> {
+interface SessionRow {
+	id: string;
+	title: string;
+	state: string;
+	repo: string;
+	"branch?": string;
+}
+
+export async function sessionsCommand(
+	args: string[],
+): Promise<string | Record<string, unknown>> {
 	const { flags, unknown } = parseFlags(args);
 
 	if (unknown.includes("--help")) {
@@ -172,14 +187,16 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 		].join("\n");
 	}
 
-	// Repo filter: default to current repo for lean output, --all to skip,
-	// --repo <x> to override
 	const repoFilter = flags.all ? null : (flags.repo ?? detectCurrentRepo());
 
-	const client = new JulesApiClient();
+	let client: JulesApiClient;
+	try {
+		client = new JulesApiClient();
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		return `error: ${msg}`;
+	}
 
-	// Filtering happens client-side, so fetch every page — a repo/state
-	// filter must see the whole session set, not just the first page.
 	let rawSessions: JulesSession[];
 	let pagesTruncated: boolean;
 	try {
@@ -192,79 +209,60 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 
 	let filtered = rawSessions;
 	if (repoFilter) {
-		const needle = repoFilter.toLowerCase();
-		filtered = filtered.filter((s) =>
-			(s.sourceContext?.source ?? "").toLowerCase().includes(needle),
-		);
+		filtered = filtered.filter((s) => sessionMatchesRepo(s, repoFilter));
 	}
 
-	// Client-side state filter
 	if (flags.state) {
 		const needle = flags.state.toUpperCase();
 		filtered = filtered.filter((s) => (s.state ?? "").toUpperCase() === needle);
 	}
 
-	// Git reconciliation
 	const branchIds = getLocalJulesBranchSessionIds();
-
 	const total = rawSessions.length;
 	const shown = filtered.length;
 
-	const lines: string[] = [];
-
-	// --- Empty states ---
+	// --- Empty states (return strings for definitive messages) ---
 	if (total === 0) {
-		lines.push(
+		return [
 			"sessions: 0 sessions found — no Jules sessions exist for this account",
-		);
-		lines.push(
-			toonHelp([
-				'Run `jules-axi new --prompt "<task>" --repo <owner/repo>` to create one',
-			]),
-		);
-		return lines.join("\n");
+			'help[1]: Run `jules-axi new --prompt "<task>" --repo <owner/repo>` to create one',
+		].join("\n");
 	}
 
 	if (shown === 0) {
-		lines.push("sessions: 0 matching sessions");
-		if (repoFilter) lines.push(toonKv("repo", repoFilter));
-		if (flags.state) lines.push(toonKv("state-filter", flags.state));
-		lines.push(toonKv("total-available", String(total)));
+		const lines: string[] = ["sessions: 0 matching sessions"];
+		if (repoFilter) lines.push(`repo: ${repoFilter}`);
+		if (flags.state) lines.push(`state-filter: ${flags.state}`);
+		lines.push(`total-available: ${String(total)}`);
+		if (pagesTruncated) {
+			lines.push(
+				`warning: stopped after ${MAX_SESSION_PAGES} pages — older sessions may be missing`,
+			);
+		}
 		lines.push(
-			toonHelp([
-				"Run `jules-axi sessions --all` to see sessions across all repos",
-			]),
+			"help[1]: Run `jules-axi sessions --all` to see sessions across all repos",
 		);
 		return lines.join("\n");
 	}
 
-	// --- Aggregate ---
-	lines.push(toonKv("count", `${shown} of ${total} total`));
+	// --- Normal output: structured object rendered by @toon-format/toon ---
+	const rows: SessionRow[] = filtered.map((s) => ({
+		id: s.id || "?",
+		title: deriveDisplayTitle(s.title),
+		state: s.state ?? "UNKNOWN",
+		repo: extractRepo(s),
+		"branch?": s.id && branchIds.has(s.id) ? "yes" : "no",
+	}));
+
+	const output: Record<string, unknown> = {
+		count: `${shown} of ${total} total`,
+		sessions: rows,
+	};
+
 	if (pagesTruncated) {
-		lines.push(
-			toonKv(
-				"warning",
-				`stopped after ${MAX_SESSION_PAGES} pages — older sessions may be missing`,
-			),
-		);
+		output.warning = `stopped after ${MAX_SESSION_PAGES} pages — older sessions may be missing`;
 	}
 
-	// --- TOON table ---
-	const fields = ["id", "title", "state", "repo", "branch?"];
-	lines.push(toonHeader("sessions", filtered.length, fields));
-
-	const rows: ToonRow[] = filtered.map((s) => ({
-		cells: [
-			s.id || "?",
-			deriveDisplayTitle(s.title),
-			s.state ?? "UNKNOWN",
-			extractRepo(s),
-			s.id && branchIds.has(s.id) ? "yes" : "no",
-		],
-	}));
-	lines.push(toonRows(rows));
-
-	// --- Contextual next steps ---
 	const suggestions: string[] = [];
 	if (flags.all) {
 		suggestions.push("Run `jules-axi get <id>` to view full session details");
@@ -280,7 +278,7 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	suggestions.push(
 		"Run `jules-axi sessions --state COMPLETED` to find finished sessions",
 	);
-	lines.push(toonHelp(suggestions));
+	output.help = suggestions;
 
-	return lines.join("\n");
+	return output;
 }
