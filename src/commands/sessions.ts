@@ -8,8 +8,6 @@ import {
 	type ToonRow,
 } from "../toon.js";
 
-const DEFAULT_LIMIT = 20;
-
 interface SessionsFlags {
 	repo?: string;
 	state?: string;
@@ -85,6 +83,17 @@ function detectCurrentRepo(): string | null {
 	return null;
 }
 
+async function fetchAllSessions(client: JulesApiClient): Promise<JulesSession[]> {
+	const sessions: JulesSession[] = [];
+	let pageToken: string | undefined;
+	do {
+		const res = await client.listSessions({ pageSize: 200, pageToken });
+		sessions.push(...(res.sessions ?? []));
+		pageToken = res.nextPageToken;
+	} while (pageToken);
+	return sessions;
+}
+
 function extractRepo(session: JulesSession): string {
 	const source = session.sourceContext?.source ?? "";
 	const prefix = "sources/github/";
@@ -138,21 +147,13 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	// --repo <x> to override
 	const repoFilter = flags.all ? null : (flags.repo ?? detectCurrentRepo());
 
-	// Filtering happens client-side, so when a repo filter is in play we need
-	// a big enough page that the current repo's sessions are actually in it —
-	// not just the 20 globally-most-recent sessions across all repos.
-	const pageSizeUsed = flags.all || repoFilter ? 200 : DEFAULT_LIMIT;
-
 	const client = new JulesApiClient();
 
+	// Filtering happens client-side, so fetch every page — a repo/state
+	// filter must see the whole session set, not just the first page.
 	let rawSessions: JulesSession[];
-	let hasMore = false;
 	try {
-		const res = await client.listSessions({
-			pageSize: pageSizeUsed,
-		});
-		rawSessions = res.sessions ?? [];
-		hasMore = Boolean(res.nextPageToken);
+		rawSessions = await fetchAllSessions(client);
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		return `error: Failed to fetch sessions — ${msg}`;
@@ -177,7 +178,6 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 
 	const total = rawSessions.length;
 	const shown = filtered.length;
-	const truncated = !flags.all && hasMore && shown > 0;
 
 	const lines: string[] = [];
 
@@ -225,18 +225,9 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	}));
 	lines.push(toonRows(rows));
 
-	// --- Truncation hint ---
-	if (truncated) {
-		lines.push(
-			toonHelp([
-				`Showing ${total} sessions — more sessions exist beyond this page`,
-			]),
-		);
-	}
-
 	// --- Contextual next steps ---
 	const suggestions: string[] = [];
-	if (truncated || flags.all) {
+	if (flags.all) {
 		suggestions.push("Run `jules-axi get <id>` to view full session details");
 	}
 	if (!flags.all && !flags.repo) {

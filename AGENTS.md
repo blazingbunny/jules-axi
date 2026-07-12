@@ -19,7 +19,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 
 - API `state` field lags real git state by 35+ min; `branch?` column cross-references local branches
 - `state: COMPLETED` does not mean success — a session can complete with no branch pushed
-- The `sessions` command truncates to 20 by default with a `--all` escape hatch
+- The `sessions` command fetches all sessions via pagination (follows `nextPageToken` in a loop), then filters client-side to the current repo by default; `--all` shows every repo instead
 
 ## Maintaining this file
 
