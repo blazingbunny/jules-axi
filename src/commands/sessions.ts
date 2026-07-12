@@ -83,15 +83,21 @@ function detectCurrentRepo(): string | null {
 	return null;
 }
 
-async function fetchAllSessions(client: JulesApiClient): Promise<JulesSession[]> {
+const MAX_SESSION_PAGES = 50; // 50 * 200 = 10,000 sessions, far beyond any real account
+
+async function fetchAllSessions(
+	client: JulesApiClient,
+): Promise<{ sessions: JulesSession[]; truncated: boolean }> {
 	const sessions: JulesSession[] = [];
 	let pageToken: string | undefined;
+	let pages = 0;
 	do {
 		const res = await client.listSessions({ pageSize: 200, pageToken });
 		sessions.push(...(res.sessions ?? []));
 		pageToken = res.nextPageToken;
-	} while (pageToken);
-	return sessions;
+		pages++;
+	} while (pageToken && pages < MAX_SESSION_PAGES);
+	return { sessions, truncated: Boolean(pageToken) };
 }
 
 function extractRepo(session: JulesSession): string {
@@ -152,8 +158,10 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	// Filtering happens client-side, so fetch every page — a repo/state
 	// filter must see the whole session set, not just the first page.
 	let rawSessions: JulesSession[];
+	let pagesTruncated: boolean;
 	try {
-		rawSessions = await fetchAllSessions(client);
+		({ sessions: rawSessions, truncated: pagesTruncated } =
+			await fetchAllSessions(client));
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		return `error: Failed to fetch sessions — ${msg}`;
@@ -209,6 +217,14 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 
 	// --- Aggregate ---
 	lines.push(toonKv("count", `${shown} of ${total} total`));
+	if (pagesTruncated) {
+		lines.push(
+			toonKv(
+				"warning",
+				`stopped after ${MAX_SESSION_PAGES} pages — older sessions may be missing`,
+			),
+		);
+	}
 
 	// --- TOON table ---
 	const fields = ["id", "title", "state", "repo", "branch?"];
