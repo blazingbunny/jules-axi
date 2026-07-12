@@ -7,6 +7,8 @@ export interface JulesSession {
 	id: string; // extracted from name ("sessions/<id>")
 	title?: string;
 	state?: string;
+	createTime?: string;
+	updateTime?: string;
 	sourceContext?: {
 		source?: string;
 	};
