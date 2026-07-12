@@ -1,0 +1,39 @@
+{
+	"name": "jules-axi",
+	"version": "0.1.0",
+	"description": "AXI CLI for Jules — Google's async coding agent",
+	"type": "module",
+	"bin": {
+		"jules-axi": "./dist/index.js"
+	},
+	"files": [
+		"dist/"
+	],
+	"scripts": {
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"dev": "tsc && node dist/index.js",
+		"test": "tsc && npx tsx src/commands/sessions.test.ts"
+	},
+	"keywords": [
+		"axi",
+		"jules",
+		"cli",
+		"agent"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/blazingbunny/jules-axi.git"
+	},
+	"dependencies": {
+		"axi-sdk-js": "^0.1.8"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"typescript": "^5.7.0"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}
