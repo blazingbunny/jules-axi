@@ -95,7 +95,7 @@ function extractRepo(session: JulesSession): string {
 function helpText(): string {
 	return `flags: --repo <owner/repo>, --state <STATE>, --all
 
-Show Jules sessions. Defaults to current git repo's sessions (last ${DEFAULT_LIMIT}).
+Show Jules sessions. Defaults to the current git repo's sessions.
 Use --all to see sessions across all repos.
 
 Filter examples:
@@ -120,12 +120,28 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 		].join("\n");
 	}
 
+	if (flags.repo === "") {
+		return [
+			"error: --repo requires a value (e.g. --repo owner/repo)",
+			`Run \`jules-axi sessions --help\` for full reference`,
+		].join("\n");
+	}
+
+	// Repo filter: default to current repo for lean output, --all to skip,
+	// --repo <x> to override
+	const repoFilter = flags.all ? null : (flags.repo ?? detectCurrentRepo());
+
+	// Filtering happens client-side, so when a repo filter is in play we need
+	// a big enough page that the current repo's sessions are actually in it —
+	// not just the 20 globally-most-recent sessions across all repos.
+	const pageSizeUsed = flags.all || repoFilter ? 200 : DEFAULT_LIMIT;
+
 	const client = new JulesApiClient();
 
 	let rawSessions: JulesSession[];
 	try {
 		const res = await client.listSessions({
-			pageSize: flags.all ? 200 : DEFAULT_LIMIT,
+			pageSize: pageSizeUsed,
 		});
 		rawSessions = res.sessions ?? [];
 	} catch (err) {
@@ -133,10 +149,7 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 		return `error: Failed to fetch sessions — ${msg}`;
 	}
 
-	// Repo filter: default to current repo for lean output, --all to skip,
-	// --repo <x> to override
 	let filtered = rawSessions;
-	const repoFilter = flags.all ? null : (flags.repo ?? detectCurrentRepo());
 	if (repoFilter) {
 		const needle = repoFilter.toLowerCase();
 		filtered = filtered.filter((s) =>
@@ -155,7 +168,7 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 
 	const total = rawSessions.length;
 	const shown = filtered.length;
-	const truncated = !flags.all && total > DEFAULT_LIMIT && shown > 0;
+	const truncated = !flags.all && total >= pageSizeUsed && shown > 0;
 
 	const lines: string[] = [];
 
@@ -207,7 +220,7 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	if (truncated) {
 		lines.push(
 			toonHelp([
-				`Showing last ${DEFAULT_LIMIT} of ${total} sessions — run \`jules-axi sessions --all\` for full list`,
+				`Showing last ${pageSizeUsed} of ${total} sessions — run \`jules-axi sessions --all\` for full list`,
 			]),
 		);
 	}
