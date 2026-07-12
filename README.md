@@ -80,6 +80,7 @@ Use `jules-axi` for managing Jules sessions.
 npm install
 npm run build
 npm start
+npm test
 ```
 
 ## Commands
