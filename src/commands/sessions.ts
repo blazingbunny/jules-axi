@@ -109,10 +109,13 @@ async function fetchAllSessions(
  * followed by the actual task description. Strip the identity
  * preamble and return the first meaningful line of the task.
  */
-function deriveDisplayTitle(raw: string | undefined): string {
+export function deriveDisplayTitle(raw: string | undefined): string {
 	if (!raw) return "untitled";
-	// Strip the agent-identity preamble line if present
-	const identityRe = /^You are a senior .+? specializing in .+?\.\n\n/;
+	// Strip the agent-identity preamble line if present.
+	// Jules always opens with "You are a senior {role}.\n\n" — but the
+	// role line varies in length and may use UK (specialising) or US
+	// (specializing) spelling, so match greedily to the first blank line.
+	const identityRe = /^You are a senior .+\n\n/;
 	const body = raw.replace(identityRe, "");
 	// Take first line of the task description, strip leading # markers
 	const firstLine = body.split("\n").find((l) => l.trim()) ?? "";

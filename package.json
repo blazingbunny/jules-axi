@@ -12,7 +12,8 @@
 	"scripts": {
 		"build": "tsc",
 		"start": "node dist/index.js",
-		"dev": "tsc && node dist/index.js"
+		"dev": "tsc && node dist/index.js",
+		"test": "tsc && npx tsx src/commands/sessions.test.ts"
 	},
 	"keywords": [
 		"axi",

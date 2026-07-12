@@ -8,15 +8,7 @@
  * Run: npx tsx src/commands/sessions.test.ts
  */
 
-// Replicate deriveDisplayTitle inline for testing (avoids export churn)
-function deriveDisplayTitle(raw: string | undefined): string {
-	if (!raw) return "untitled";
-	const identityRe = /^You are a senior .+\n\n/;
-	const body = raw.replace(identityRe, "");
-	const firstLine = body.split("\n").find((l) => l.trim()) ?? "";
-	const cleaned = firstLine.replace(/^#{1,3}\s*/, "").trim();
-	return cleaned.slice(0, 80) || "untitled";
-}
+import { deriveDisplayTitle } from "./sessions.js";
 
 interface TestCase {
 	raw: string | undefined;
