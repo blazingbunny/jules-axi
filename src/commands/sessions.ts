@@ -25,10 +25,12 @@ function parseFlags(args: string[]): {
 		const arg = args[i];
 		switch (arg) {
 			case "--repo":
-				flags.repo = args[i + 1] && !args[i + 1].startsWith("-") ? args[++i] : "";
+				flags.repo =
+					args[i + 1] && !args[i + 1].startsWith("-") ? args[++i] : "";
 				break;
 			case "--state":
-				flags.state = args[i + 1] && !args[i + 1].startsWith("-") ? args[++i] : "";
+				flags.state =
+					args[i + 1] && !args[i + 1].startsWith("-") ? args[++i] : "";
 				break;
 			case "--all":
 				flags.all = true;
@@ -98,6 +100,24 @@ async function fetchAllSessions(
 		pages++;
 	} while (pageToken && pages < MAX_SESSION_PAGES);
 	return { sessions, truncated: Boolean(pageToken) };
+}
+
+/**
+ * Derive a display title from the raw Jules session title.
+ * The API returns the full prompt as `title`, which starts with:
+ *   "You are a senior {role} specializing in {skills}.\n\n"
+ * followed by the actual task description. Strip the identity
+ * preamble and return the first meaningful line of the task.
+ */
+function deriveDisplayTitle(raw: string | undefined): string {
+	if (!raw) return "untitled";
+	// Strip the agent-identity preamble line if present
+	const identityRe = /^You are a senior .+? specializing in .+?\.\n\n/;
+	const body = raw.replace(identityRe, "");
+	// Take first line of the task description, strip leading # markers
+	const firstLine = body.split("\n").find((l) => l.trim()) ?? "";
+	const cleaned = firstLine.replace(/^#{1,3}\s*/, "").trim();
+	return cleaned.slice(0, 80) || "untitled";
 }
 
 function extractRepo(session: JulesSession): string {
@@ -233,7 +253,7 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	const rows: ToonRow[] = filtered.map((s) => ({
 		cells: [
 			s.id || "?",
-			(s.title ?? "").split("\n")[0].slice(0, 80) || "untitled",
+			deriveDisplayTitle(s.title),
 			s.state ?? "UNKNOWN",
 			extractRepo(s),
 			s.id && branchIds.has(s.id) ? "yes" : "no",
