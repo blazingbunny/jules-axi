@@ -239,9 +239,11 @@ export async function sessionsCommand(
 				`warning: stopped after ${MAX_SESSION_PAGES} pages — older sessions may be missing`,
 			);
 		}
-		lines.push(
-			"help[1]: Run `jules-axi sessions --all` to see sessions across all repos",
-		);
+		if (!flags.all && !flags.repo) {
+			lines.push(
+				"help[1]: Run `jules-axi sessions --all` to see sessions across all repos",
+			);
+		}
 		return lines.join("\n");
 	}
 
