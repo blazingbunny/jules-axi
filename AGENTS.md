@@ -24,6 +24,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - The `sessions` command fetches all sessions via pagination (follows `nextPageToken` in a loop), then filters client-side to the current repo by default; `--all` shows every repo instead
 - Pagination is capped at 50 pages (~10,000 sessions); if the cap is hit, output includes a `warning` line noting older sessions may be missing
 - `activities` recognizes a fixed set of activity type keys (`planCreated`, `planGenerated`, `planApproved`, `progressUpdated`, `artifacts`, `sessionCompleted`, `agentMessaged`, `fileCreated`, `fileEdited`, `commandRun`); anything else degrades to an `unknown activity: <key>` summary instead of crashing — extend `getActivityType`/`summarizeActivity` in `src/commands/activities.ts` when the API adds new activity shapes
+- `new` runs a client-side free-tier pre-check (`checkFreeTierLimit` in `src/commands/new.ts`) before creating a session: max 15 creations/24h and 3 concurrent non-terminal sessions, derived from `fetchAllSessions`' `createTime`/`state` fields. It's best-effort only (session state lags 35+ min) and fails open on fetch errors — the real safety net is the 429/quota error handling in `createSession`'s catch block
 
 ## Maintaining this file
 

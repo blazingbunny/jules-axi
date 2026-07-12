@@ -187,7 +187,12 @@ export async function newCommand(
 	}
 
 	// Best-effort free-tier pre-check (state lags; API error handler is the real safety net)
-	const rateLimitError = await checkFreeTierLimit(client);
+	let rateLimitError: string | null = null;
+	try {
+		rateLimitError = await checkFreeTierLimit(client);
+	} catch {
+		// fail open — pre-check is best-effort, createSession's error handler is the real safety net
+	}
 	if (rateLimitError) return rateLimitError;
 
 	try {
