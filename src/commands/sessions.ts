@@ -176,13 +176,12 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	// --repo <x> to override
 	const repoFilter = flags.all ? null : (flags.repo ?? detectCurrentRepo());
 
-	const client = new JulesApiClient();
-
 	// Filtering happens client-side, so fetch every page — a repo/state
 	// filter must see the whole session set, not just the first page.
 	let rawSessions: JulesSession[];
 	let pagesTruncated: boolean;
 	try {
+		const client = new JulesApiClient();
 		({ sessions: rawSessions, truncated: pagesTruncated } =
 			await fetchAllSessions(client));
 	} catch (err) {
@@ -193,9 +192,7 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	let filtered = rawSessions;
 	if (repoFilter) {
 		const needle = repoFilter.toLowerCase();
-		filtered = filtered.filter((s) =>
-			(s.sourceContext?.source ?? "").toLowerCase().includes(needle),
-		);
+		filtered = filtered.filter((s) => extractRepo(s).toLowerCase() === needle);
 	}
 
 	// Client-side state filter
@@ -230,6 +227,14 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 		if (repoFilter) lines.push(toonKv("repo", repoFilter));
 		if (flags.state) lines.push(toonKv("state-filter", flags.state));
 		lines.push(toonKv("total-available", String(total)));
+		if (pagesTruncated) {
+			lines.push(
+				toonKv(
+					"warning",
+					`stopped after ${MAX_SESSION_PAGES} pages — older sessions may be missing`,
+				),
+			);
+		}
 		lines.push(
 			toonHelp([
 				"Run `jules-axi sessions --all` to see sessions across all repos",
