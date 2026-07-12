@@ -1,5 +1,7 @@
 # jules-axi
 
+[![CI](https://github.com/blazingbunny/jules-axi/actions/workflows/ci.yml/badge.svg)](https://github.com/blazingbunny/jules-axi/actions/workflows/ci.yml)
+
 AXI CLI for [Jules](https://jules.google.com) — Google's async coding agent.
 
 Agent-native CLI built on the [AXI](https://axi.md) design principles: token-efficient TOON output, minimal schemas, pre-computed aggregates, and structured errors.
