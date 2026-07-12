@@ -97,6 +97,13 @@ export async function checkSilentCommand(args: string[]): Promise<string | Recor
 		].join("\n");
 	}
 
+	if (flags.repo === "") {
+		return [
+			"error: --repo requires a value (e.g. --repo owner/repo)",
+			`Run \`jules-axi check-silent --help\` for full reference`,
+		].join("\n");
+	}
+
 	let client: JulesApiClient;
 	try {
 		client = new JulesApiClient();

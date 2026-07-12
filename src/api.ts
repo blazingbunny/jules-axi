@@ -34,9 +34,9 @@ export class JulesApiClient {
 		};
 	}
 
-	async getSession(id: string): Promise<JulesSession> {
-		const res = await fetch(`${BASE_URL}/sessions/${id}`, {
-			method: "GET",
+	private async request(path: string, init?: RequestInit): Promise<any> {
+		const res = await fetch(`${BASE_URL}${path}`, {
+			...init,
 			headers: this.headers(),
 		});
 
@@ -47,90 +47,43 @@ export class JulesApiClient {
 			);
 		}
 
-		const session = (await res.json()) as JulesSession;
+		const text = await res.text();
+		return text ? JSON.parse(text) : undefined;
+	}
+
+	async getSession(id: string): Promise<JulesSession> {
+		const session = (await this.request(`/sessions/${id}`)) as JulesSession;
 		session.id = session.name ? session.name.split("/").pop()! : "";
 		return session;
 	}
 
 	async createSession(payload: any): Promise<JulesSession> {
-		const res = await fetch(`${BASE_URL}/sessions`, {
+		const session = (await this.request("/sessions", {
 			method: "POST",
-			headers: this.headers(),
 			body: JSON.stringify(payload),
-		});
-
-		if (!res.ok) {
-			const body = await res.text().catch(() => "");
-			throw new Error(
-				`Jules API returned ${res.status}: ${body.slice(0, 200)}`,
-			);
-		}
-
-		const session = (await res.json()) as JulesSession;
+		})) as JulesSession;
 		session.id = session.name ? session.name.split("/").pop()! : "";
 		return session;
 	}
 
 	async approvePlan(id: string): Promise<void> {
-		const res = await fetch(`${BASE_URL}/sessions/${id}:approvePlan`, {
-			method: "POST",
-			headers: this.headers(),
-		});
-
-		if (!res.ok) {
-			const body = await res.text().catch(() => "");
-			throw new Error(
-				`Jules API returned ${res.status}: ${body.slice(0, 200)}`,
-			);
-		}
+		await this.request(`/sessions/${id}:approvePlan`, { method: "POST" });
 	}
 
 	async sendMessage(id: string, text: string): Promise<void> {
-		const res = await fetch(`${BASE_URL}/sessions/${id}:sendMessage`, {
+		await this.request(`/sessions/${id}:sendMessage`, {
 			method: "POST",
-			headers: this.headers(),
 			body: JSON.stringify({ message: text }),
 		});
-
-		if (!res.ok) {
-			const body = await res.text().catch(() => "");
-			throw new Error(
-				`Jules API returned ${res.status}: ${body.slice(0, 200)}`,
-			);
-		}
 	}
 
 	async listActivities(id: string): Promise<any[]> {
-		const res = await fetch(`${BASE_URL}/sessions/${id}/activities`, {
-			method: "GET",
-			headers: this.headers(),
-		});
-
-		if (!res.ok) {
-			const body = await res.text().catch(() => "");
-			throw new Error(
-				`Jules API returned ${res.status}: ${body.slice(0, 200)}`,
-			);
-		}
-
-		const data = await res.json();
+		const data = await this.request(`/sessions/${id}/activities`);
 		return data.activities || [];
 	}
 
 	async listSources(): Promise<any[]> {
-		const res = await fetch(`${BASE_URL}/sources`, {
-			method: "GET",
-			headers: this.headers(),
-		});
-
-		if (!res.ok) {
-			const body = await res.text().catch(() => "");
-			throw new Error(
-				`Jules API returned ${res.status}: ${body.slice(0, 200)}`,
-			);
-		}
-
-		const data = await res.json();
+		const data = await this.request("/sources");
 		return data.sources || [];
 	}
 
@@ -138,23 +91,14 @@ export class JulesApiClient {
 		pageSize?: number;
 		pageToken?: string;
 	}): Promise<ListSessionsResponse> {
-		const url = new URL(`${BASE_URL}/sessions`);
-		if (opts?.pageSize) url.searchParams.set("pageSize", String(opts.pageSize));
-		if (opts?.pageToken) url.searchParams.set("pageToken", opts.pageToken);
+		const params = new URLSearchParams();
+		if (opts?.pageSize) params.set("pageSize", String(opts.pageSize));
+		if (opts?.pageToken) params.set("pageToken", opts.pageToken);
+		const query = params.toString();
 
-		const res = await fetch(url.toString(), {
-			method: "GET",
-			headers: this.headers(),
-		});
-
-		if (!res.ok) {
-			const body = await res.text().catch(() => "");
-			throw new Error(
-				`Jules API returned ${res.status}: ${body.slice(0, 200)}`,
-			);
-		}
-
-		const data = (await res.json()) as ListSessionsResponse;
+		const data = (await this.request(
+			`/sessions${query ? `?${query}` : ""}`,
+		)) as ListSessionsResponse;
 
 		// Extract short ID from "sessions/<id>"
 		if (data.sessions) {

@@ -50,7 +50,7 @@ Examples:
 
 function summarizeActivity(activity: any): string {
 	if (!activity) return "unknown";
-	
+
 	if (activity.agentMessaged?.message) {
 		const text = activity.agentMessaged.message.replace(/\\n/g, " ");
 		return text.length > 100 ? text.slice(0, 97) + "..." : text;
@@ -58,6 +58,14 @@ function summarizeActivity(activity: any): string {
 	if (activity.fileEdited?.path) return activity.fileEdited.path;
 	if (activity.fileCreated?.path) return activity.fileCreated.path;
 	if (activity.commandRun?.command) return activity.commandRun.command;
+	if (activity.planGenerated?.title) return activity.planGenerated.title;
+	if (activity.planGenerated) return "plan generated";
+	if (activity.planApproved) return "plan approved";
+	if (activity.progressUpdated?.title) return activity.progressUpdated.title;
+	if (activity.progressUpdated?.description) return activity.progressUpdated.description;
+	if (activity.progressUpdated) return "progress updated";
+	if (activity.artifacts) return "artifact attached";
+	if (activity.sessionCompleted) return "session completed";
 	if (activity.planCreated) return "plan created";
 
 	// Default to type if identifiable
@@ -66,17 +74,23 @@ function summarizeActivity(activity: any): string {
 	if (activity.fileCreated) return "file created";
 	if (activity.commandRun) return "command run";
 
-	return "unknown activity details";
+	const type = getActivityType(activity);
+	return `unknown activity: ${type}`;
 }
 
 function getActivityType(activity: any): string {
 	if (!activity) return "unknown";
 	if (activity.planCreated) return "planCreated";
+	if (activity.planGenerated) return "planGenerated";
+	if (activity.planApproved) return "planApproved";
+	if (activity.progressUpdated) return "progressUpdated";
+	if (activity.artifacts) return "artifacts";
+	if (activity.sessionCompleted) return "sessionCompleted";
 	if (activity.agentMessaged) return "agentMessaged";
 	if (activity.fileCreated) return "fileCreated";
 	if (activity.fileEdited) return "fileEdited";
 	if (activity.commandRun) return "commandRun";
-	
+
 	// fallback to finding the first defined key
 	const keys = Object.keys(activity).filter(k => k !== "name" && k !== "createTime");
 	return keys[0] || "unknown";
