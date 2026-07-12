@@ -113,7 +113,7 @@ export async function checkSilentCommand(args: string[]): Promise<string | Recor
 	}
 
 	const repoFilter = flags.repo ?? detectCurrentRepo();
-	
+
 	let rawSessions;
 	try {
 		({ sessions: rawSessions } = await fetchAllSessions(client));
@@ -128,7 +128,7 @@ export async function checkSilentCommand(args: string[]): Promise<string | Recor
 	}
 
 	const branchIds = getLocalJulesBranchSessionIds();
-	
+
 	const silentFailures = filtered.filter(s => s.id && !branchIds.has(s.id));
 
 	if (flags.noState) {
@@ -147,9 +147,9 @@ export async function checkSilentCommand(args: string[]): Promise<string | Recor
 
 	const stateFile = flags.stateFile || join(homedir(), ".local", "state", "jules-axi", "check-silent-seen.json");
 	const seen = loadSeen(stateFile);
-	
+
 	const newFailures = silentFailures.filter(s => s.id && !seen.has(s.id));
-	
+
 	if (newFailures.length === 0) {
 		return "";
 	}
