@@ -115,6 +115,10 @@ Options:
   --require-plan-approval  (Optional) Wait for manual plan approval (default: true)
   --no-require-plan-approval Disable plan approval
 
+Before creating a session, runs a best-effort pre-check against free-tier limits
+(15 creations/24h, 3 concurrent non-terminal sessions) and blocks with an error
+if either is exceeded. The API's own quota rejection is still the final word.
+
 Examples:
   jules-axi new --repo blazingbunny/jules-axi --prompt "Add pagination support"
   cat task.md | jules-axi new --repo blazingbunny/jules-axi`;

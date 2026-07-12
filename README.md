@@ -91,6 +91,8 @@ The `branch?` column shows whether a git branch exists for each session — API 
 
 Pagination stops after 50 pages (~10,000 sessions). If that cap is hit, a `warning` line is added to the output noting that older sessions may be missing.
 
+`new` runs a best-effort client-side pre-check against Jules' free-tier limits (15 session creations per rolling 24h, 3 concurrent non-terminal sessions) before creating a session, and blocks with an `error` line if either is exceeded. It fails open on fetch errors — the API's own 429/quota rejection is still the authoritative check.
+
 ## Agent integration
 
 ```bash
