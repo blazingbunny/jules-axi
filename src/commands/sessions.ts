@@ -1,5 +1,5 @@
-import { execSync } from "node:child_process";
 import { JulesApiClient, type JulesSession } from "../api.js";
+import { getLocalJulesBranchSessionIds, extractRepo } from "../utils/helpers.js";
 
 interface SessionsFlags {
 	repo?: string;
@@ -40,27 +40,9 @@ function parseFlags(args: string[]): {
 	return { flags, unknown };
 }
 
-function getLocalJulesBranchSessionIds(): Set<string> {
-	try {
-		const out = execSync("git branch --all 2>/dev/null", {
-			encoding: "utf-8",
-			timeout: 5000,
-		});
-		const ids = new Set<string>();
-		const re = /(\d{15,})/g;
-		for (const line of out.split("\n")) {
-			let m: RegExpExecArray | null;
-			while ((m = re.exec(line)) !== null) {
-				ids.add(m[1]);
-			}
-		}
-		return ids;
-	} catch {
-		return new Set();
-	}
-}
+import { execSync } from "node:child_process";
 
-function detectCurrentRepo(): string | null {
+export function detectCurrentRepo(): string | null {
 	try {
 		const out = execSync("git remote get-url origin 2>/dev/null", {
 			encoding: "utf-8",
@@ -80,7 +62,7 @@ function detectCurrentRepo(): string | null {
 
 const MAX_SESSION_PAGES = 50; // 50 * 200 = 10,000 sessions, far beyond any real account
 
-async function fetchAllSessions(
+export async function fetchAllSessions(
 	client: JulesApiClient,
 ): Promise<{ sessions: JulesSession[]; truncated: boolean }> {
 	const sessions: JulesSession[] = [];
@@ -116,19 +98,8 @@ export function deriveDisplayTitle(raw: string | undefined): string {
 	return cleaned.slice(0, 80) || "untitled";
 }
 
-/**
- * Extract the repo slug from a session's sourceContext, matching exactly
- * against the `sources/github/<owner>/<repo>` convention.
- */
-function extractRepo(session: JulesSession): string {
-	const source = session.sourceContext?.source ?? "";
-	const prefix = "sources/github/";
-	if (source.startsWith(prefix)) return source.slice(prefix.length);
-	return source;
-}
-
 /** Match a session against a repo filter by comparing the extracted repo slug exactly. */
-function sessionMatchesRepo(
+export function sessionMatchesRepo(
 	session: JulesSession,
 	repoFilter: string,
 ): boolean {

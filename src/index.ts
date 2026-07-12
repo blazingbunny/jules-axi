@@ -2,19 +2,28 @@
 
 import { runAxiCli, AxiError } from "axi-sdk-js";
 import { sessionsCommand } from "./commands/sessions.js";
+import { newCommand } from "./commands/new.js";
+import { getCommand } from "./commands/get.js";
+import { approveCommand } from "./commands/approve.js";
+import { messageCommand } from "./commands/message.js";
+import { activitiesCommand } from "./commands/activities.js";
+import { sourcesCommand } from "./commands/sources.js";
+import { checkSilentCommand } from "./commands/check-silent.js";
+import { watchCommand } from "./commands/watch.js";
 import { resolveApiKey } from "./config.js";
 
 const TOP_LEVEL_HELP = `jules-axi: Manage Jules — Google's async coding agent — from the CLI
 
 Commands:
   sessions         List Jules sessions
-  new              Create a new session (not yet implemented)
-  get              Get session details (not yet implemented)
-  approve          Approve a plan (not yet implemented)
-  message          Send a message to a session (not yet implemented)
-  activities       List activities for a session (not yet implemented)
-  check-silent     Find completed sessions with no branch (not yet implemented)
-  sources          List registered source repos (not yet implemented)
+  new              Create a new session
+  get              Get session details
+  approve          Approve a plan
+  message          Send a message to a session
+  activities       List activities for a session
+  check-silent     Find completed sessions with no branch
+  watch            One-shot state-change poll for a session
+  sources          List registered source repos
   setup hooks      Install ambient context hooks (not yet implemented)
 
 Flags: --help, -v/--version (built-in by AXI SDK)
@@ -60,13 +69,14 @@ await runAxiCli({
 	home: homeView,
 	commands: {
 		sessions: sessionsCommand,
-		new: stubCommand("new"),
-		get: stubCommand("get"),
-		approve: stubCommand("approve"),
-		message: stubCommand("message"),
-		activities: stubCommand("activities"),
-		"check-silent": stubCommand("check-silent"),
-		sources: stubCommand("sources"),
+		new: newCommand,
+		get: getCommand,
+		approve: approveCommand,
+		message: messageCommand,
+		activities: activitiesCommand,
+		"check-silent": checkSilentCommand,
+		watch: watchCommand,
+		sources: sourcesCommand,
 		setup: async (args) => {
 			return `error: \`setup\` is not yet implemented — coming soon.
 help: The setup command will install Claude/Codex/OpenCode hooks.`;
