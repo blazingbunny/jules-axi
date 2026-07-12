@@ -32,7 +32,7 @@ Set your Jules API key via one of:
 # Home view — live session summary
 jules-axi
 
-# List sessions (last 20 by default)
+# List sessions (defaults to the current git repo's sessions, last 20)
 jules-axi sessions
 
 # Filter by repo
