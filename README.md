@@ -59,6 +59,8 @@ help[1]: Run `jules-axi sessions --state AWAITING_USER_FEEDBACK` to find session
 
 The `branch?` column shows whether a git branch exists for each session — API state alone can lag by 35+ minutes, so this avoids trusting it blindly.
 
+Pagination stops after 50 pages (~10,000 sessions). If that cap is hit, a `warning` line is added to the output noting that older sessions may be missing.
+
 ## Agent integration
 
 ```bash
