@@ -10,6 +10,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - `node dist/index.js` — run the CLI locally
 - `node dist/index.js sessions` — test the sessions command against real API
 - `npm test` — type-checks and runs `src/commands/sessions.test.ts` (title-derivation and zero-match-suggestion assertions, no real API calls)
+- CI (`.github/workflows/ci.yml`) runs build + test on Node 20 for pushes and PRs to `main`
 
 ## Auth
 
