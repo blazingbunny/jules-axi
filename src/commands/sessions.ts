@@ -27,10 +27,10 @@ function parseFlags(args: string[]): {
 		const arg = args[i];
 		switch (arg) {
 			case "--repo":
-				flags.repo = args[++i] ?? "";
+				flags.repo = args[i + 1] && !args[i + 1].startsWith("-") ? args[++i] : "";
 				break;
 			case "--state":
-				flags.state = args[++i] ?? "";
+				flags.state = args[i + 1] && !args[i + 1].startsWith("-") ? args[++i] : "";
 				break;
 			case "--all":
 				flags.all = true;
@@ -127,6 +127,13 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 		].join("\n");
 	}
 
+	if (flags.state === "") {
+		return [
+			"error: --state requires a value (e.g. --state IN_PROGRESS)",
+			`Run \`jules-axi sessions --help\` for full reference`,
+		].join("\n");
+	}
+
 	// Repo filter: default to current repo for lean output, --all to skip,
 	// --repo <x> to override
 	const repoFilter = flags.all ? null : (flags.repo ?? detectCurrentRepo());
@@ -139,11 +146,13 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	const client = new JulesApiClient();
 
 	let rawSessions: JulesSession[];
+	let hasMore = false;
 	try {
 		const res = await client.listSessions({
 			pageSize: pageSizeUsed,
 		});
 		rawSessions = res.sessions ?? [];
+		hasMore = Boolean(res.nextPageToken);
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		return `error: Failed to fetch sessions — ${msg}`;
@@ -168,7 +177,7 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 
 	const total = rawSessions.length;
 	const shown = filtered.length;
-	const truncated = !flags.all && total >= pageSizeUsed && shown > 0;
+	const truncated = !flags.all && hasMore && shown > 0;
 
 	const lines: string[] = [];
 
@@ -220,7 +229,7 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	if (truncated) {
 		lines.push(
 			toonHelp([
-				`Showing last ${pageSizeUsed} of ${total} sessions — run \`jules-axi sessions --all\` for full list`,
+				`Showing ${total} sessions — more sessions exist beyond this page`,
 			]),
 		);
 	}

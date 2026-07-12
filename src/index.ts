@@ -47,7 +47,6 @@ async function homeView(): Promise<string> {
 	}
 
 	try {
-		const { sessionsCommand } = await import("./commands/sessions.js");
 		return await sessionsCommand([]);
 	} catch {
 		return "jules-axi: Ready\nRun `jules-axi sessions` to list Jules sessions";
