@@ -67,6 +67,24 @@ function getLocalJulesBranchSessionIds(): Set<string> {
 	}
 }
 
+function detectCurrentRepo(): string | null {
+	try {
+		const out = execSync("git remote get-url origin 2>/dev/null", {
+			encoding: "utf-8",
+			timeout: 5000,
+		});
+		let url = out.trim();
+		url = url.replace(/^https?:\/\/github\.com\//, "");
+		url = url.replace(/^git@github\.com:/, "");
+		url = url.replace(/\.git$/, "");
+		url = url.replace(/\/$/, "");
+		if (url.includes("/")) return url;
+	} catch {
+		// Not a git repo or no origin remote
+	}
+	return null;
+}
+
 function extractRepo(session: JulesSession): string {
 	const source = session.sourceContext?.source ?? "";
 	const prefix = "sources/github/";
@@ -77,7 +95,8 @@ function extractRepo(session: JulesSession): string {
 function helpText(): string {
 	return `flags: --repo <owner/repo>, --state <STATE>, --all
 
-Show Jules sessions. Defaults to last ${DEFAULT_LIMIT} — use --all for everything.
+Show Jules sessions. Defaults to current git repo's sessions (last ${DEFAULT_LIMIT}).
+Use --all to see sessions across all repos.
 
 Filter examples:
   jules-axi sessions --repo blazingbunny/jules-axi
@@ -114,10 +133,12 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 		return `error: Failed to fetch sessions — ${msg}`;
 	}
 
-	// Client-side repo filter
+	// Repo filter: default to current repo for lean output, --all to skip,
+	// --repo <x> to override
 	let filtered = rawSessions;
-	if (flags.repo) {
-		const needle = flags.repo.toLowerCase();
+	const repoFilter = flags.all ? null : (flags.repo ?? detectCurrentRepo());
+	if (repoFilter) {
+		const needle = repoFilter.toLowerCase();
 		filtered = filtered.filter((s) =>
 			(s.sourceContext?.source ?? "").toLowerCase().includes(needle),
 		);
@@ -153,9 +174,14 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 
 	if (shown === 0) {
 		lines.push("sessions: 0 matching sessions");
-		if (flags.repo) lines.push(toonKv("repo-filter", flags.repo));
+		if (repoFilter) lines.push(toonKv("repo", repoFilter));
 		if (flags.state) lines.push(toonKv("state-filter", flags.state));
 		lines.push(toonKv("total-available", String(total)));
+		lines.push(
+			toonHelp([
+				"Run `jules-axi sessions --all` to see sessions across all repos",
+			]),
+		);
 		return lines.join("\n");
 	}
 
@@ -189,7 +215,12 @@ export async function sessionsCommand(args: string[]): Promise<string> {
 	// --- Contextual next steps ---
 	const suggestions: string[] = [];
 	if (truncated || flags.all) {
-		suggestions.push("Run `jules-axi sessions <id>` to view full details");
+		suggestions.push("Run `jules-axi get <id>` to view full session details");
+	}
+	if (!flags.all && !flags.repo) {
+		suggestions.push(
+			"Run `jules-axi sessions --all` to see sessions across all repos",
+		);
 	}
 	suggestions.push(
 		"Run `jules-axi sessions --state AWAITING_USER_FEEDBACK` to find sessions that need input",
