@@ -45,7 +45,35 @@ jules-axi sessions --state AWAITING_USER_FEEDBACK
 
 # Show all sessions
 jules-axi sessions --all
+
+# Create a new session
+jules-axi new --repo blazingbunny/jules-axi --prompt "Add pagination support"
+cat task.md | jules-axi new --repo blazingbunny/jules-axi
+
+# Get full details for a session
+jules-axi get 1234567890
+
+# Approve a pending plan
+jules-axi approve 1234567890
+
+# Send a message to a session
+jules-axi message 1234567890 --text "Please add tests"
+
+# List activities for a session (truncates to latest 15 unless --full)
+jules-axi activities 1234567890
+jules-axi activities 1234567890 --full
+
+# Find COMPLETED sessions with no local branch ("silent failures")
+jules-axi check-silent
+
+# One-shot state-change poll for a session (for cron/scheduler loops)
+jules-axi watch 1234567890
+
+# List registered source repos
+jules-axi sources
 ```
+
+Every command supports `--help` for its full flag reference.
 
 ### Output format
 
@@ -62,6 +90,8 @@ help[1]: Run `jules-axi sessions --state AWAITING_USER_FEEDBACK` to find session
 The `branch?` column shows whether a git branch exists for each session — API state alone can lag by 35+ minutes, so this avoids trusting it blindly.
 
 Pagination stops after 50 pages (~10,000 sessions). If that cap is hit, a `warning` line is added to the output noting that older sessions may be missing.
+
+`new` runs a best-effort client-side pre-check against Jules' free-tier limits (15 session creations per rolling 24h, 3 concurrent non-terminal sessions) before creating a session, and blocks with an `error` line if either is exceeded. It fails open on fetch errors — the API's own 429/quota rejection is still the authoritative check.
 
 ## Agent integration
 
@@ -90,11 +120,12 @@ npm test
 | Command        | Status     |
 | -------------- | ---------- |
 | `sessions`     | ✅ Working |
-| `new`          | 🚧 Stub    |
-| `get`          | 🚧 Stub    |
-| `approve`      | 🚧 Stub    |
-| `message`      | 🚧 Stub    |
-| `activities`   | 🚧 Stub    |
-| `check-silent` | 🚧 Stub    |
-| `sources`      | 🚧 Stub    |
+| `new`          | ✅ Working |
+| `get`          | ✅ Working |
+| `approve`      | ✅ Working |
+| `message`      | ✅ Working |
+| `activities`   | ✅ Working |
+| `check-silent` | ✅ Working |
+| `watch`        | ✅ Working |
+| `sources`      | ✅ Working |
 | `setup hooks`  | 🚧 Stub    |
